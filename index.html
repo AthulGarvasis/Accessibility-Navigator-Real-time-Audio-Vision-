@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Accessibility Navigator</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --text-main: #ffffff;
+            --recording-glow: rgba(239, 68, 68, 0.6);
+        }
+
+        body { 
+            font-family: 'Outfit', sans-serif; 
+            margin: 0;
+            padding: 0;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            color: var(--text-main); 
+            height: 100dvh; 
+            overflow: hidden;
+            text-align: center;
+            /* Animated subtle gradient background */
+            background: linear-gradient(-45deg, #0f172a, #020617, #1e1b4b, #0f172a);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        header {
+            width: 100%;
+            padding: 25px 0;
+            background: linear-gradient(180deg, rgba(2,6,23,0.9) 0%, rgba(2,6,23,0) 100%);
+            position: absolute;
+            top: 0;
+            z-index: 10;
+        }
+
+        h2 {
+            margin: 0;
+            font-size: 1.8rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            /* Gradient Text Effect */
+            background: linear-gradient(135deg, #a855f7, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0px 4px 20px rgba(168, 85, 247, 0.3);
+        }
+
+        main {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+
+        video { 
+            width: 100%; 
+            max-width: 450px; 
+            aspect-ratio: 3 / 4; 
+            object-fit: cover;
+            border-radius: 28px; 
+            background: #000; 
+            /* Glassmorphic border and ambient glow */
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(168, 85, 247, 0.25), 
+                        0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+        }
+
+        .controls {
+            width: 100%;
+            padding: 40px 20px 60px;
+            background: linear-gradient(0deg, rgba(2,6,23,1) 15%, rgba(2,6,23,0) 100%);
+            display: flex;
+            justify-content: center;
+            box-sizing: border-box;
+            position: absolute;
+            bottom: 0;
+            z-index: 10;
+        }
+
+        button { 
+            padding: 22px 40px; 
+            font-size: 1.3rem; 
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            border-radius: 60px; 
+            /* Vibrant resting gradient */
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6); 
+            color: var(--text-main); 
+            border: 1px solid rgba(255, 255, 255, 0.2); 
+            width: 90%; 
+            max-width: 350px; 
+            cursor: pointer; 
+            user-select: none; 
+            -webkit-user-select: none;
+            touch-action: manipulation; 
+            box-shadow: 0 10px 25px rgba(139, 92, 246, 0.4);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        button:hover {
+            box-shadow: 0 15px 35px rgba(139, 92, 246, 0.6);
+            transform: translateY(-3px);
+        }
+
+        button:focus-visible {
+            outline: 3px solid #ec4899;
+            outline-offset: 4px;
+        }
+
+        /* Active "Listening" State */
+        button:active { 
+            /* Switch to a warm, recording-style gradient */
+            background: linear-gradient(135deg, #ef4444, #f97316); 
+            transform: scale(0.92);
+            border-color: rgba(255, 255, 255, 0.4);
+            animation: pulse-recording 1.2s infinite;
+        }
+
+        @keyframes pulse-recording {
+            0% { box-shadow: 0 0 0 0 var(--recording-glow); }
+            70% { box-shadow: 0 0 0 25px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h2>Navigator</h2>
+    </header>
+
+    <main>
+        <video id="camera" autoplay playsinline aria-label="Environment camera feed"></video>
+    </main>
+    
+    <div class="controls">
+        <button id="askBtn" aria-live="polite">Hold to Ask</button>
+    </div>
+    
+    <script>
+        const video = document.getElementById('camera');
+        const askBtn = document.getElementById('askBtn');
+        
+        let mediaRecorder;
+        let audioChunks = [];
+
+        // 1. Initialize Camera and Microphone
+        navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: "environment" }, 
+            audio: true 
+        })
+        .then(stream => {
+            // Attach video stream to UI
+            video.srcObject = new MediaStream([stream.getVideoTracks()[0]]);
+            
+            // Set up audio recorder
+            mediaRecorder = new MediaRecorder(new MediaStream([stream.getAudioTracks()[0]]));
+            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+            
+            // 2. When user stops speaking, process the data
+            mediaRecorder.onstop = async () => {
+                askBtn.innerText = "Thinking...";
+                
+                // Package Audio
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                audioChunks = [];
+                
+                // Package Image (Take a snapshot from the video feed)
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                const base64Image = canvas.toDataURL('image/jpeg').split(',')[1];
+
+                // Prepare payload
+                const formData = new FormData();
+                formData.append('audio', audioBlob, 'audio.webm');
+                formData.append('image', base64Image);
+
+                // 3. Send to Python Backend (Using the relative path so it works everywhere)
+                try {
+                    const response = await fetch('/navigate', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    // Parse the JSON text answer
+                    const data = await response.json();
+                    
+                    // 4. Use the browser's built-in Speech API to read the answer out loud
+                    const utterance = new SpeechSynthesisUtterance(data.answer);
+                    window.speechSynthesis.speak(utterance);
+
+                } catch (err) {
+                    console.error("Error communicating with backend:", err);
+                }
+                
+                askBtn.innerText = "Hold to Ask";
+            };
+        })
+        .catch(err => console.error("Camera/Mic access denied:", err));
+
+        // Event listeners for the button (supports mouse and mobile touch)
+        const startRecording = (e) => { e.preventDefault(); mediaRecorder.start(); askBtn.innerText = "Listening..."; };
+        const stopRecording = (e) => { e.preventDefault(); mediaRecorder.stop(); };
+
+        askBtn.addEventListener('mousedown', startRecording);
+        askBtn.addEventListener('mouseup', stopRecording);
+        askBtn.addEventListener('touchstart', startRecording);
+        askBtn.addEventListener('touchend', stopRecording);
+    </script>
+</body>
+</html>
